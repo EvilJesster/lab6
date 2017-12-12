@@ -66,7 +66,7 @@ to humanBehavoir
       ifelse inrad > 1
       [
         face min-one-of mobs[distance myself]
-        while [(count mobs in-cone human_vision_radius 20) > 0]
+        while [(count mobs in-cone human_vision_radius 10) > 0]
         [
           rt 10
         ]
@@ -273,7 +273,7 @@ zombie_vision_length
 zombie_vision_length
 1
 10
-8.0
+10.0
 1
 1
 NIL
@@ -288,7 +288,7 @@ zombie_vision_angle
 zombie_vision_angle
 10
 360
-104.0
+12.0
 1
 1
 NIL
