@@ -1,6 +1,7 @@
 breed [pcs pc]
 breed [mobs mob]
 pcs-own[inrad stamina]
+globals[encountercounter]
 
 to setup
   ca
@@ -55,12 +56,17 @@ to humanBehavoir
       rt 180
       ifelse stamina >= 1
       [
-        fd 0.8
+         fd 0.8
         set stamina stamina - 1
       ]
       [
         fd 0.1
       ]
+      ;every 1
+      ;  [
+      ;    set plabel encountercounter
+       ;   set encountercounter encountercounter + 1
+        ;]
     ]
     [
       ifelse inrad > 1
@@ -75,16 +81,20 @@ to humanBehavoir
         rt 90
         ifelse stamina >= 1
         [
-          fd 0.8
+           fd 0.8
           set stamina stamina - 1
         ]
         [
           fd 0.1
         ]
-        print who
+       ; every 1
+      ;  [
+         ; set plabel encountercounter
+         ; set encountercounter encountercounter + 1
+       ; ]
       ]
       [
-        fd .2
+         fd .2
         rt (random 40 - 20)
 
         if stamina < maximum_stamina
@@ -100,8 +110,16 @@ end
 
 to zombieBehavoir
   ask patches[set pcolor black]
+
   ask mobs
   [
+    ifelse(shape = "zom1")
+    [
+      set shape "zom2"
+    ]
+    [
+      set shape "zom1"
+    ]
 
     ask patches in-cone zombie_vision_length zombie_vision_angle[ set pcolor red ]
 
@@ -243,7 +261,7 @@ starting_humans
 starting_humans
 1
 100
-1.0
+21.0
 1
 1
 NIL
@@ -273,7 +291,7 @@ zombie_vision_length
 zombie_vision_length
 1
 10
-8.0
+6.0
 1
 1
 NIL
@@ -288,7 +306,7 @@ zombie_vision_angle
 zombie_vision_angle
 10
 360
-104.0
+128.0
 1
 1
 NIL
