@@ -472,7 +472,7 @@ PENS
 " blue" 1.0 0 -14454117 true "" "plot safewordblue"
 "white" 1.0 0 -3026479 true "" "plot safewordwhite"
 "safe" 1.0 0 -7500403 true "" "plot safehumans"
-"mobs" 1.0 0 -2674135 true "" "plot zombies"
+"zombies" 1.0 0 -2674135 true "" "plot zombies"
 
 BUTTON
 1002

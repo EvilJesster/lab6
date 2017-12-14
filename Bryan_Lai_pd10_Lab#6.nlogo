@@ -1,39 +1,44 @@
-breed [pcs pc]
-breed [mobs mob]
-pcs-own[inrad stamina safeword]
-
-turtles-own[beingdragged]
-to drag4
-  ask turtles
-  [
-    ifelse (round (mouse-xcor) = round(xcor) and round(mouse-ycor) = round(ycor) and mouse-down?)
-    [
-      set beingdragged true
-    ]
-    [
-      if beingdragged = 0
-      [
-        set beingdragged false
-      ]
-    ]
-    ifelse beingdragged and mouse-down?
-    [
-       set xcor mouse-xcor set ycor mouse-ycor
-    ]
-    [
-    set beingdragged false
-    ]
+breed [zombies zombie]
+breed [humans human]
+humans-own [stamina safecolor]
+;Create 2 zombies color green. Create 5 humans.
+to setup
+  resize-world -25 25 -25 25
+  ca
+  set-default-shape zombies "person"
+  set-default-shape humans "person"
+  reset-ticks
+  create-zombies starting_zombies [set size 3 set color random-float 2 + green setxy random-pxcor random-pycor]
+  create-humans starting_humans [
+    set size 3
+    set color random-float 2 + orange
+    setxy random-pxcor random-pycor
+    let u ["b" "w"]
+    set safecolor item random 2 u
+    set label safecolor
   ]
+
+  bluebox
+  whitebox
 end
 
-to randomizer
-  ask n-of ((round(count pcs)) / 10) pcs[
-    ifelse(safeword = "b")[set safeword "w"][set safeword "b"]
-    set label safeword
-  ]
+to-report zombays
+  report count zombies
 end
 
-;possible patches for bluebox left side limit is -20 20 to -20 -20 possible for right side limit -6 20 and -6 -20
+to-report safehumans
+  report count humans with[(safecolor = "b" and pcolor = blue) or (safecolor = "w" and pcolor = white)]
+end
+
+to-report safewordblue
+  report count humans with[safecolor = "b"]
+end
+
+to-report safewordwhite
+  report count humans with[safecolor = "w"]
+end
+
+
 to bluebox
   ask patch ((random -15) - 6) ((random 41) - 20)[boxcolor blue]
 end
@@ -61,182 +66,97 @@ to boxcolor [col]
       ]
 end
 
-to setup
-  ca
-  reset-ticks
-  resize-world -25 25 -25 25
-  set-default-shape mobs "zombie"
-  set-default-shape pcs "person police"
- ; ask patch
-  bluebox
-  whitebox
-  create-mobs starting_zombies
-  [
-    setxy random-xcor random-ycor
-    set color green + random-float 2.1
-  ]
-  create-pcs starting_humans
-  [
-    setxy random-xcor random-ycor
-    set color blue  + random-float 2.1
-    set stamina maximum_stamina
-    let u ["b" "w"]
-    set safeword item random 2 u
-    set label safeword
-  ]
-  ask turtles
-  [
-    set size 3
-  ]
+
+;Humans go fd 0.2, and rotate either left or right by 20 degrees.
+;Increase stamina by 0.2.
+to humanWiggle
+  fd 0.2 rt random -41 + 20
+  set stamina stamina + 0.2
 end
 
+;If a human spots a zombie...
+;If stamina >= 1, it goes fd 0.8 and sets its stamina to stamina -1.
+;If stamina < 1, it goes fd 0.1 and doesn't gain any stamina.
+;If stamina is greater or = to maxStamina, set it to maxStamina.
+to staminaCheck
+  if stamina >= 1 [
+    fd 0.8
+    set stamina stamina - 1
+  if stamina < 1 [
+      fd 0.1 rt random -41 + 20]]
+  if stamina >= maximum_Stamina [set stamina maximum_Stamina]
+end
 
+;Zombies move fd 0.07, and turn either 20 degrees left or right.
+to shambles
+  fd 0.07 rt random -41 + 20
+end
+
+;Every 0.045, it runs humanBehavior and zombieBehavior.
 to go
-  every 0.1
-  [
-    humanbehavior
-    zombiebehavior
+  every 0.045 [
+  humanBehavior
+    zombieBehavior
     tick
-  ;  show safewordblue
-   ; show safewordwhite
-   ; show safehumans
+    show safewordblue
+    show safewordwhite
+    show safehumans
+    show zombies
   ]
 end
 
-to-report safehumans
-  report count pcs with[(safeword = "b" and pcolor = blue) or (safeword = "w" and pcolor = white)]
-end
-
-to-report zombies
-  report count mobs
-end
-
-to-report safewordblue
-  report count pcs with[safeword = "b"]
-end
-
-to-report safewordwhite
-  report count pcs with[safeword = "w"]
-end
-
-to humanbehavior
-
-  ask pcs
-  [
-
-   ; ask patches in-radius human_vision_radius
-    ;[
-    ;  ifelse pcolor = red
-     ;   [set pcolor 125]
-
-     ;   [set pcolor blue]
-   ; ]
-
-    set inrad (count mobs in-radius human_vision_radius )
-    ifelse inrad = 1
+;Asks humans if any zombies in-radius based on the slider, to run away from the zombies
+;based on the # of stamina they have. *Check staminaCheck* If it does not detect a zombie,
+;it just wiggles normally and gains 0.2 stamina.
+to humanBehavior
+  ask humans [
+    ifelse any? zombies in-radius human_vision_radius [
+      face min-one-of zombies [distance myself] rt 180 staminaCheck]
     [
-      face min-one-of mobs[distance myself]
-      rt 180
-      ifelse stamina >= 1 [
-        fd 0.8
-        set stamina stamina - 1
-      ]
-      [
-        fd 0.1
-      ]
-      ;every 1
-      ;  [
-      ;    set plabel encountercounter
-       ;   set encountercounter encountercounter + 1
-        ;]
+      humanWiggle
     ]
-    [
-      ifelse inrad > 1
-      [
-        face min-one-of mobs[distance myself]
-        while [(count mobs in-cone human_vision_radius 20) > 0]
-        [
-          rt 10
-        ]
+  ]
+  ask patches with[pcolor = blue][ask humans-here with [safecolor = "b"][ if[pcolor] of patch-ahead 1 = black[bk 1]]]
+  ask patches with[pcolor = white][ask humans-here with [safecolor = "w"][ if[pcolor] of patch-ahead 1 = black[bk 1]]]ask patches with[pcolor = blue][ask humans-here with [safecolor = "b"][ if[pcolor] of patch-ahead 1 = black[bk 1]]]
 
-       ; facexy (-(abs(mean [xcor] of mobs in-radius human_vision_radius))) (-(abs(mean [ycor] of mobs in-radius human_vision_radius)))
+end
+
+;Asks zombies if any humans in their view of a cone with a radius of 10 and 90 degrees in front of it,
+;it will go towards that human, turn it into a zombie if they're on the same patch, and hatch another one.
+;If there is no human detected based on the slider radius, it will just run shambles.
+to zombieBehavior
+  ask zombies [
+    ifelse any? humans with [pcolor != blue and pcolor != white] in-cone zombie_vision_radius zombie_vision_angle [
+      face min-one-of humans [distance myself] fd 0.3
+    ] [shambles]
+
+    if any? humans-here [
+      ask humans-here[
         rt 90
-        ifelse stamina >= 1
-        [
-           fd 0.8
-          set stamina stamina - 1
-        ]
-        [
-          fd 0.1
-        ]
-       ; every 1
-      ;  [
-         ; set plabel encountercounter
-         ; set encountercounter encountercounter + 1
-       ; ]
-      ]
-      [
-         fd .2
-        rt (random 40 - 20)
-
-        if stamina < maximum_stamina
-        [
-          set stamina stamina + 0.2
-        ]
-
+        set color green + random-float 2
+        set breed zombies
       ]
     ]
   ]
-  ask patches with[pcolor = blue][ask pcs-here with [safeword = "b"][ if[pcolor] of patch-ahead 1 = black[bk 1]]]
-  ask patches with[pcolor = white][ask pcs-here with [safeword = "w"][ if[pcolor] of patch-ahead 1 = black[bk 1]]]
+  ask patches with[pcolor = blue or pcolor = white][ask zombies-here[ bk 3]]
 end
 
-
-to zombiebehavior
- ; ask patches[set pcolor black]
-
-  ask mobs
-  [
-    ifelse(shape = "zom1")
-    [
-      set shape "zom2"
-    ]
-    [
-      set shape "zom1"
-    ]
-
-   ; ask patches in-cone zombie_vision_length zombie_vision_angle[ set pcolor red ]
-
-    if count pcs-here > 0
-    [
-      ask pcs-here
-      [
-        set color green
-        set breed mobs
-      ]
-    ]
-    ifelse (count pcs with [pcolor != blue and pcolor != white] in-cone zombie_vision_length zombie_vision_angle) > 1
-    [
-      face min-one-of pcs with [pcolor != blue or pcolor != white][distance myself]
-        fd .3
-    ]
-    [
-      fd .07
-      rt random 20
-      lt random 20
-    ]
+to randomizer
+  ask n-of ((round(count humans)) / 10) humans[
+    print who
+    ifelse(safecolor = "b")[set safecolor "w"][set safecolor "b"]
+    set label safecolor
   ]
-  ask patches with[pcolor = blue or pcolor = white][ask mobs-here[ bk 3]]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-881
-682
+474
+275
 -1
 -1
-13.0
+5.02
 1
 10
 1
@@ -257,27 +177,10 @@ ticks
 30.0
 
 BUTTON
-38
-684
-101
-717
-NIL
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-41
-598
 104
-631
+59
+167
+92
 NIL
 setup
 NIL
@@ -290,110 +193,97 @@ NIL
 NIL
 1
 
-MONITOR
-402
-735
-479
-780
+BUTTON
+108
+101
+171
+134
 NIL
-count mobs
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+8
+40
+94
+85
+# of Zombies
+count zombies
 17
 1
 11
 
 MONITOR
-331
-735
-397
-780
-NIL
-count pcs
+11
+92
+96
+137
+# of Humans
+count humans
 17
 1
 11
 
 SLIDER
-27
-287
-199
-320
+11
+204
+183
+237
 starting_zombies
 starting_zombies
 1
 20
-12.0
+6.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-26
-325
-198
-358
+11
+162
+183
+195
 starting_humans
 starting_humans
 1
 100
-34.0
+50.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-25
-361
-197
-394
+12
+246
+184
+279
 maximum_stamina
 maximum_stamina
 20
 100
-71.0
+50.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-26
-397
-198
-430
-zombie_vision_length
-zombie_vision_length
-1
-10
-8.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-27
-431
-199
-464
-zombie_vision_angle
-zombie_vision_angle
-10
-360
-175.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-35
-480
-207
-513
-human_vision_radius
-human_vision_radius
+16
+294
+188
+327
+zombie_vision_radius
+zombie_vision_radius
 1
 10
 10.0
@@ -402,83 +292,62 @@ human_vision_radius
 NIL
 HORIZONTAL
 
-BUTTON
-1220
-614
-1366
-647
-NIL
-repeat 20[whitebox]
-NIL
+SLIDER
+14
+338
+186
+371
+zombie_vision_angle
+zombie_vision_angle
+10
+360
+90.0
+10
 1
-T
-OBSERVER
 NIL
-NIL
-NIL
-NIL
-1
+HORIZONTAL
 
-BUTTON
-1242
-682
-1381
-715
-NIL
-repeat 20[bluebox]
-NIL
+SLIDER
+13
+382
+185
+415
+human_vision_radius
+human_vision_radius
 1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
+10
+5.0
 1
-
-BUTTON
-1278
-447
-1342
-480
-NIL
-drag4
-T
 1
-T
-OBSERVER
 NIL
-P
-NIL
-NIL
-1
+HORIZONTAL
 
 PLOT
-19
-109
-219
-259
-Number of Specific Turtles
-Type of Turtle:
-Amount of thy specific turtle:
+489
+32
+689
+182
+number of specific turtles
+type of turtle
+Amount of thy specific turtle
 0.0
 10.0
 0.0
 10.0
 true
 false
-"" "show safewordblue\nshow safehumans\nshow safewordwhite\nshow zombies"
+"" ""
 PENS
-" blue" 1.0 0 -14454117 true "" "plot safewordblue"
-"white" 1.0 0 -3026479 true "" "plot safewordwhite"
-"safe" 1.0 0 -7500403 true "" "plot safehumans"
-"mobs" 1.0 0 -2674135 true "" "plot zombies"
+"default" 1.0 0 -1604481 true "" "plot safehumans"
+"pen-1" 1.0 0 -13791810 true "" "plot safewordblue"
+"pen-2" 1.0 0 -6759204 true "" "plot safewordwhite"
+"pen-3" 1.0 0 -14439633 true "" "plot zombays"
 
 BUTTON
-1002
-723
-1095
-756
+102
+19
+195
+52
 NIL
 randomizer
 NIL
@@ -489,6 +358,16 @@ NIL
 NIL
 NIL
 NIL
+1
+
+TEXTBOX
+490
+197
+883
+372
+Blue: Safeword Blue Humans\nLight Blue: Safeword White Humans\nGreen: Zombies\nRed: Humans
+20
+85.0
 1
 
 @#$#@#$#@
@@ -708,49 +587,6 @@ Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
 
-person police
-false
-0
-Polygon -1 true false 124 91 150 165 178 91
-Polygon -13345367 true false 134 91 149 106 134 181 149 196 164 181 149 106 164 91
-Polygon -13345367 true false 180 195 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285
-Polygon -13345367 true false 120 90 105 90 60 195 90 210 116 158 120 195 180 195 184 158 210 210 240 195 195 90 180 90 165 105 150 165 135 105 120 90
-Rectangle -7500403 true true 123 76 176 92
-Circle -7500403 true true 110 5 80
-Polygon -13345367 true false 150 26 110 41 97 29 137 -1 158 6 185 0 201 6 196 23 204 34 180 33
-Line -13345367 false 121 90 194 90
-Line -16777216 false 148 143 150 196
-Rectangle -16777216 true false 116 186 182 198
-Rectangle -16777216 true false 109 183 124 227
-Rectangle -16777216 true false 176 183 195 205
-Circle -1 true false 152 143 9
-Circle -1 true false 152 166 9
-Polygon -1184463 true false 172 112 191 112 185 133 179 133
-Polygon -1184463 true false 175 6 194 6 189 21 180 21
-Line -1184463 false 149 24 197 24
-Rectangle -16777216 true false 101 177 122 187
-Rectangle -16777216 true false 179 164 183 186
-
-person soldier
-false
-0
-Rectangle -7500403 true true 127 79 172 94
-Polygon -10899396 true false 105 90 60 195 90 210 135 105
-Polygon -10899396 true false 195 90 240 195 210 210 165 105
-Circle -7500403 true true 110 5 80
-Polygon -10899396 true false 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
-Polygon -6459832 true false 120 90 105 90 180 195 180 165
-Line -6459832 false 109 105 139 105
-Line -6459832 false 122 125 151 117
-Line -6459832 false 137 143 159 134
-Line -6459832 false 158 179 181 158
-Line -6459832 false 146 160 169 146
-Rectangle -6459832 true false 120 193 180 201
-Polygon -6459832 true false 122 4 107 16 102 39 105 53 148 34 192 27 189 17 172 2 145 0
-Polygon -16777216 true false 183 90 240 15 247 22 193 90
-Rectangle -6459832 true false 114 187 128 208
-Rectangle -6459832 true false 177 187 191 208
-
 plant
 false
 0
@@ -875,69 +711,6 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
-zom1
-false
-0
-Rectangle -7500403 true true 127 79 172 94
-Polygon -10899396 true false 105 90 60 195 90 210 135 105
-Polygon -10899396 true false 195 90 240 195 210 210 165 105
-Circle -7500403 true true 110 5 80
-Polygon -10899396 true false 105 90 120 195 90 285 105 300 120 300 150 225 150 300 195 300 210 285 180 195 195 90
-Polygon -6459832 true false 120 90 105 90 180 195 180 165
-Line -6459832 false 109 105 139 105
-Line -6459832 false 122 125 151 117
-Line -6459832 false 137 143 159 134
-Line -6459832 false 158 179 181 158
-Line -6459832 false 146 160 169 146
-Rectangle -6459832 true false 120 193 180 201
-Polygon -6459832 true false 122 4 107 16 102 39 105 53 148 34 192 27 189 17 172 2 145 0
-Rectangle -6459832 true false 114 187 128 208
-Rectangle -6459832 true false 177 187 191 208
-Rectangle -7500403 true true 105 135 135 180
-Rectangle -7500403 true true 165 90 180 120
-
-zom2
-false
-0
-Rectangle -7500403 true true 127 79 172 94
-Polygon -10899396 true false 105 90 60 195 90 210 135 105
-Polygon -10899396 true false 195 90 240 195 210 210 165 105
-Circle -7500403 true true 110 5 80
-Polygon -10899396 true false 105 90 120 195 90 285 105 300 150 300 150 225 180 300 195 300 210 285 180 195 195 90
-Polygon -6459832 true false 120 90 105 90 180 195 180 165
-Line -6459832 false 109 105 139 105
-Line -6459832 false 122 125 151 117
-Line -6459832 false 137 143 159 134
-Line -6459832 false 158 179 181 158
-Line -6459832 false 146 160 169 146
-Rectangle -6459832 true false 120 193 180 201
-Polygon -6459832 true false 122 4 107 16 102 39 105 53 148 34 192 27 189 17 172 2 145 0
-Rectangle -6459832 true false 114 187 128 208
-Rectangle -6459832 true false 177 187 191 208
-Rectangle -7500403 true true 105 135 135 180
-Rectangle -7500403 true true 165 90 180 120
-
-zombie
-false
-0
-Rectangle -7500403 true true 127 79 172 94
-Polygon -10899396 true false 105 90 60 195 90 210 135 105
-Polygon -10899396 true false 195 90 240 195 210 210 165 105
-Circle -7500403 true true 110 5 80
-Polygon -10899396 true false 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
-Polygon -6459832 true false 120 90 105 90 180 195 180 165
-Line -6459832 false 109 105 139 105
-Line -6459832 false 122 125 151 117
-Line -6459832 false 137 143 159 134
-Line -6459832 false 158 179 181 158
-Line -6459832 false 146 160 169 146
-Rectangle -6459832 true false 120 193 180 201
-Polygon -6459832 true false 122 4 107 16 102 39 105 53 148 34 192 27 189 17 172 2 145 0
-Rectangle -6459832 true false 114 187 128 208
-Rectangle -6459832 true false 177 187 191 208
-Rectangle -7500403 true true 105 135 135 180
-Rectangle -7500403 true true 165 90 180 120
 @#$#@#$#@
 NetLogo 6.0.2
 @#$#@#$#@
