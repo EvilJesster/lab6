@@ -26,6 +26,13 @@ to drag4
   ]
 end
 
+to randomizer
+  ask n-of ((round(count pcs)) / 10) pcs[
+    ifelse(safeword = "b")[set safeword "w"][set safeword "b"]
+    set label safecolor
+  ]
+end
+
 ;possible patches for bluebox left side limit is -20 20 to -20 -20 possible for right side limit -6 20 and -6 -20
 to bluebox
   ask patch ((random -15) - 6) ((random 41) - 20)[boxcolor blue]
@@ -56,6 +63,7 @@ end
 
 to setup
   ca
+  reset-ticks
   resize-world -25 25 -25 25
   set-default-shape mobs "zombie"
   set-default-shape pcs "person police"
@@ -88,9 +96,25 @@ to go
   [
     humanbehavior
     zombiebehavior
+    tick
+  ;  show safewordblue
+   ; show safewordwhite
+   ; show safehumans
   ]
 end
 
+to-report safehumans
+  report count pcs with[(safeword = "b" and pcolor = blue) or (safeword = "w" and pcolor = white)]
+end
+
+
+to-report safewordblue
+  report count pcs with[safeword = "b"]
+end
+
+to-report safewordwhite
+  report count pcs with[safeword = "w"]
+end
 
 to humanbehavior
 
@@ -188,7 +212,7 @@ to zombiebehavior
         set breed mobs
       ]
     ]
-    ifelse (count pcs with [pcolor != blue or pcolor != white] in-cone zombie_vision_length zombie_vision_angle) > 1
+    ifelse (count pcs with [pcolor != blue and pcolor != white] in-cone zombie_vision_length zombie_vision_angle) > 1
     [
       face min-one-of pcs with [pcolor != blue or pcolor != white][distance myself]
         fd .3
@@ -201,7 +225,6 @@ to zombiebehavior
   ]
   ask patches with[pcolor = blue or pcolor = white][ask mobs-here[ bk 3]]
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -295,7 +318,7 @@ starting_zombies
 starting_zombies
 1
 20
-20.0
+3.0
 1
 1
 NIL
@@ -310,7 +333,7 @@ starting_humans
 starting_humans
 1
 100
-21.0
+29.0
 1
 1
 NIL
@@ -340,7 +363,7 @@ zombie_vision_length
 zombie_vision_length
 1
 10
-6.0
+10.0
 1
 1
 NIL
@@ -423,6 +446,43 @@ T
 OBSERVER
 NIL
 P
+NIL
+NIL
+1
+
+PLOT
+19
+109
+219
+259
+Number of Specific Turtles
+Type of Turtle:
+Amount of thy specific turtle:
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" "show safewordblue\nshow safehumans\nshow safewordwhite"
+PENS
+" blue" 1.0 0 -14454117 true "" "plot safewordblue"
+"white" 1.0 0 -3026479 true "" "plot safewordwhite"
+"safe" 1.0 0 -7500403 true "" "plot safehumans"
+
+BUTTON
+1002
+723
+1095
+756
+NIL
+randomizer
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
 NIL
 NIL
 1
