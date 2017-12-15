@@ -193,11 +193,11 @@ to zombiebehavior
 
    ; ask patches in-cone zombie_vision_length zombie_vision_angle[ set pcolor red ]
 
-    if any? pcs-here
+    if
     [
       ask pcs-here
       [
-        set color green + random-float 2
+        set color green
         set breed mobs
       ]
     ]
